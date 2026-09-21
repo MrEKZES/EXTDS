@@ -4,6 +4,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/ArrowComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
@@ -34,16 +35,18 @@ AEXTDSCharacter::AEXTDSCharacter()
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-
-	// Create a camera boom (pulls in towards the player if there is a collision)
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f;
-	CameraBoom->bUsePawnControlRotation = true;
+	
+	// Create the arrow pivot for camera
+	CameraPivotArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("CameraPivotArrow"));
+	CameraPivotArrow->SetupAttachment(RootComponent);
+	CameraPivotArrow->ArrowColor = FColor::Green;
+	CameraPivotArrow->ArrowSize = 1.0f;
+	CameraPivotArrow->ArrowLength = 80.0f;
+	CameraPivotArrow->SetHiddenInGame(true);
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->SetupAttachment(CameraPivotArrow);
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
@@ -61,6 +64,9 @@ void AEXTDSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AEXTDSCharacter::Move);
+		
+		EnhancedInputComponent->BindAction(TurnLeftAction, ETriggerEvent::Triggered, this, &AEXTDSCharacter::TurnLeft);
+		EnhancedInputComponent->BindAction(TurnRightAction, ETriggerEvent::Triggered, this, &AEXTDSCharacter::TurnRight);
 	}
 	else
 	{
@@ -75,6 +81,23 @@ void AEXTDSCharacter::Move(const FInputActionValue& Value)
 
 	// route the input
 	DoMove(MovementVector.X, MovementVector.Y);
+}
+
+void AEXTDSCharacter::TurnLeft(const FInputActionValue& Value)
+{
+	if (!CameraPivotArrow) return;
+
+	// Rotate the arrow left around its Yaw axis.
+	// TurnSpeed is in degrees per second, DeltaSeconds makes it framerate independent.
+	CameraYaw -= TurnSpeed * GetWorld()->GetDeltaSeconds();
+}
+
+void AEXTDSCharacter::TurnRight(const FInputActionValue& Value)
+{
+	if (!CameraPivotArrow) return;
+
+	// Rotate the arrow  right around its Yaw axis.
+	CameraYaw += TurnSpeed * GetWorld()->GetDeltaSeconds();
 }
 
 void AEXTDSCharacter::DoMove(float Right, float Forward)
@@ -107,4 +130,11 @@ void AEXTDSCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AEXTDSCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	CameraPivotArrow->SetWorldRotation(FRotator(0.f, CameraYaw, 0.f));
 }

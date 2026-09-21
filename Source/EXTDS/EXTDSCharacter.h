@@ -10,27 +10,24 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UArrowComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
-/**
- *  A simple player-controllable third person character
- *  Implements a controllable orbiting camera
- */
 UCLASS(abstract)
 class AEXTDSCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
-
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
+
+	/** Arrow component that acts as a pivot for camera*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UArrowComponent* CameraPivotArrow;
+
 protected:
 
 	/** Jump Input Action */
@@ -45,10 +42,26 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
+	/** Turn Left Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* TurnLeftAction;
+
+	/** Turn Right Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* TurnRightAction;
+
+	/** Rotaiton pitch */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera", meta = (ClampMin = "0.0", ClampMax = "360.0"))
+	float CameraYaw;
+	
+	/** Rotation speed in degrees per second when turning */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera", meta = (ClampMin = "0.0", ClampMax = "360.0"))
+	float TurnSpeed = 90.0f;
+
 public:
 
 	/** Constructor */
-	AEXTDSCharacter();	
+	AEXTDSCharacter();
 
 protected:
 
@@ -59,6 +72,12 @@ protected:
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
+
+	/** Called every frame while TurnLeft action is held */
+	void TurnLeft(const FInputActionValue& Value);
+
+	/** Called every frame while TurnRight action is held */
+	void TurnRight(const FInputActionValue& Value);
 
 public:
 
@@ -76,10 +95,11 @@ public:
 
 public:
 
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-};
 
+	/** Returns CameraPivotArrow subobject **/
+	FORCEINLINE UArrowComponent* GetCameraPivotArrow() const { return CameraPivotArrow; }
+	
+	virtual void Tick(float DeltaSeconds) override;
+};
